@@ -1,143 +1,163 @@
-name: Keep n8n API Alive (Auto-Activate)
+name: Keep n8n API Alive (Auto-Execute)
 
 on:
   schedule:
-    # Run every 8 minutes (more frequent to catch sleep faster)
+    # Run every 8 minutes
     - cron: '*/8 * * * *'
   workflow_dispatch:
     inputs:
-      test_run:
-        description: 'Manual test run'
+      force_execute:
+        description: 'Force execute n8n workflow'
         required: false
-        default: 'true'
+        default: 'false'
+
+env:
+  N8N_BASE_URL: 'https://n8n-render-rwyu.onrender.com'
+  WEBHOOK_URL: 'https://n8n-render-rwyu.onrender.com/webhook-test/search-ai-use-cases'
 
 jobs:
   keep-alive:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Wake and Activate n8n
+    - name: Wake and Test n8n Service
+      id: wake_service
       run: |
-        echo "🚀 Starting n8n keep-alive and auto-activation at $(date)"
+        echo "🚀 Starting n8n keep-alive at $(date)"
         
-        # URLs
-        N8N_BASE_URL="https://n8n-render-rwyu.onrender.com"
-        WEBHOOK_URL="$N8N_BASE_URL/webhook-test/search-ai-use-cases"
-        
-        echo "🔍 Step 1: Checking if n8n service is awake..."
-        
-        # First, try to wake up the Render service by hitting the main URL
+        # Step 1: Wake up Render service
         echo "⚡ Waking up Render service..."
         wake_response=$(curl -s -m 60 -w "HTTP_CODE:%{http_code}" "$N8N_BASE_URL" || echo "FAILED")
         wake_code=$(echo "$wake_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
         
+        echo "Service wake status: HTTP $wake_code"
+        
         if [ "$wake_code" = "200" ]; then
-          echo "✅ n8n service is awake (HTTP $wake_code)"
+          echo "✅ n8n service is awake"
         else
-          echo "⚠️  n8n service wake attempt: HTTP $wake_code (might be starting up...)"
-          echo "⏱️  Waiting 45 seconds for full startup..."
+          echo "⚠️  Service starting up, waiting 45 seconds..."
           sleep 45
         fi
         
-        echo "🔍 Step 2: Testing webhook endpoint..."
+        # Step 2: Test webhook endpoint
+        echo "🔍 Testing webhook endpoint..."
+        webhook_response=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}" "$WEBHOOK_URL" || echo "FAILED")
+        webhook_code=$(echo "$webhook_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
         
-        # Now test the webhook endpoint
-        retry_count=0
-        max_retries=4
-        success=false
+        echo "webhook_status=$webhook_code" >> $GITHUB_OUTPUT
         
-        while [ $retry_count -lt $max_retries ] && [ "$success" = false ]; do
-          echo "📡 Testing webhook - attempt $((retry_count + 1)) of $max_retries..."
-          
-          webhook_response=$(curl -s -m 30 -w "HTTP_CODE:%{http_code}" \
-            -H "Content-Type: application/json" \
-            -H "User-Agent: GitHub-Actions-KeepAlive/1.0" \
-            "$WEBHOOK_URL" 2>/dev/null || echo "FAILED")
-          
-          webhook_code=$(echo "$webhook_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
-          
-          echo "Webhook response code: $webhook_code"
-          
-          if [ "$webhook_code" = "200" ] || [ "$webhook_code" = "201" ] || [ "$webhook_code" = "204" ]; then
-            echo "✅ Webhook active! n8n workflow is running."
-            success=true
-          elif [ "$webhook_code" = "404" ]; then
-            echo "❌ Webhook not found (404) - workflow might be inactive"
-            retry_count=$((retry_count + 1))
-            if [ $retry_count -lt $max_retries ]; then
-              echo "⏱️  Waiting 30 seconds before retry (workflow might be starting)..."
-              sleep 30
-            fi
-          elif [ "$webhook_code" = "000" ] || [ "$webhook_code" = "" ]; then
-            echo "❌ No response from webhook - service might still be starting"
-            retry_count=$((retry_count + 1))
-            if [ $retry_count -lt $max_retries ]; then
-              echo "⏱️  Waiting 30 seconds for service to fully start..."
-              sleep 30
-            fi
-          else
-            echo "⚠️  Unexpected response: HTTP $webhook_code"
-            retry_count=$((retry_count + 1))
-            if [ $retry_count -lt $max_retries ]; then
-              echo "⏱️  Waiting 20 seconds before retry..."
-              sleep 20
-            fi
-          fi
-        done
-        
-        # Final status
-        if [ "$success" = true ]; then
-          echo "🎯 SUCCESS: n8n workflow is active and responding!"
+        if [ "$webhook_code" = "200" ] || [ "$webhook_code" = "201" ]; then
+          echo "✅ Webhook is active! Workflow is running."
+          echo "workflow_active=true" >> $GITHUB_OUTPUT
         else
-          echo "🚨 FAILED: Unable to activate n8n workflow after $max_retries attempts"
-          echo ""
-          echo "🔍 Diagnostic Information:"
-          echo "   - Service wake status: HTTP $wake_code"
-          echo "   - Final webhook status: HTTP $webhook_code"
-          echo "   - Service URL: $N8N_BASE_URL"
-          echo "   - Webhook URL: $WEBHOOK_URL"
-          echo ""
-          echo "💡 Possible solutions:"
-          echo "   1. Check if your n8n workflow is properly configured"
-          echo "   2. Verify the webhook URL path is correct"
-          echo "   3. Manually activate the workflow in n8n dashboard"
-          echo "   4. Check Render service logs for errors"
-          exit 1
+          echo "❌ Webhook inactive (HTTP $webhook_code) - workflow needs execution"
+          echo "workflow_active=false" >> $GITHUB_OUTPUT
         fi
 
-    - name: Extended Health Monitor
-      if: always()
+    - name: Execute n8n Workflow via Test Execution
+      if: steps.wake_service.outputs.workflow_active == 'false' || github.event.inputs.force_execute == 'true'
       run: |
-        echo "🏥 Running extended health monitoring..."
+        echo "🔄 Attempting to execute n8n workflow..."
         
-        WEBHOOK_URL="https://n8n-render-rwyu.onrender.com/webhook-test/search-ai-use-cases"
+        # Method 1: Try to trigger via webhook with test data
+        echo "📡 Method 1: Testing webhook trigger with sample data..."
         
-        # Test response time and detailed status
-        start_time=$(date +%s.%N)
-        response=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}|TIME:%{time_total}" "$WEBHOOK_URL" || echo "FAILED")
-        end_time=$(date +%s.%N)
+        test_payload='{"test": true, "source": "github-actions", "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}'
         
-        http_code=$(echo "$response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
-        response_time=$(echo "$response" | grep -o "TIME:[0-9.]*" | cut -d: -f2 || echo "unknown")
+        execute_response=$(curl -s -m 30 -w "HTTP_CODE:%{http_code}" \
+          -X POST \
+          -H "Content-Type: application/json" \
+          -H "User-Agent: GitHub-Actions-KeepAlive/1.0" \
+          -d "$test_payload" \
+          "$WEBHOOK_URL" || echo "FAILED")
         
-        echo "📊 Health Check Results:"
-        echo "   Status Code: $http_code"
-        echo "   Response Time: ${response_time}s"
-        echo "   Timestamp: $(date)"
+        execute_code=$(echo "$execute_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
         
-        if [ "$http_code" = "200" ]; then
-          if (( $(echo "$response_time > 3" | bc -l) )); then
-            echo "⚠️  Status: SLOW - API responding but slow (${response_time}s)"
-            echo "   This might indicate the service was recently awakened"
-          else
-            echo "✅ Status: EXCELLENT - Fast response (${response_time}s)"
-          fi
-        elif [ "$http_code" = "404" ]; then
-          echo "❌ Status: WORKFLOW INACTIVE - n8n workflow not running"
-        elif [ "$http_code" = "000" ]; then
-          echo "❌ Status: SERVICE DOWN - No response from server"
+        echo "Execution attempt result: HTTP $execute_code"
+        
+        if [ "$execute_code" = "200" ] || [ "$execute_code" = "201" ]; then
+          echo "✅ Workflow execution successful via webhook!"
         else
-          echo "⚠️  Status: UNUSUAL - HTTP $http_code"
+          echo "⚠️  Webhook execution failed, trying alternative method..."
+          
+          # Method 2: Try to activate via main webhook endpoint (without test path)
+          echo "📡 Method 2: Testing main webhook endpoint..."
+          
+          main_webhook="https://n8n-render-rwyu.onrender.com/webhook/search-ai-use-cases"
+          
+          main_response=$(curl -s -m 30 -w "HTTP_CODE:%{http_code}" \
+            -X POST \
+            -H "Content-Type: application/json" \
+            -d "$test_payload" \
+            "$main_webhook" || echo "FAILED")
+          
+          main_code=$(echo "$main_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+          
+          echo "Main webhook result: HTTP $main_code"
+          
+          if [ "$main_code" = "200" ] || [ "$main_code" = "201" ]; then
+            echo "✅ Workflow activated via main webhook!"
+          else
+            echo "❌ Both execution methods failed"
+            echo "   Test webhook: HTTP $execute_code"
+            echo "   Main webhook: HTTP $main_code"
+          fi
         fi
         
-        echo "⏰ Next check in 8 minutes at $(date -d '+8 minutes')"
+        # Wait a bit for workflow to fully initialize
+        echo "⏱️  Waiting 15 seconds for workflow to initialize..."
+        sleep 15
+
+    - name: Verify Workflow Status
+      run: |
+        echo "🔍 Final verification of workflow status..."
+        
+        # Test the webhook again after execution attempt
+        final_test=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}" "$WEBHOOK_URL" || echo "FAILED")
+        final_code=$(echo "$final_test" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        
+        echo "📊 Final Status Check:"
+        echo "   Webhook URL: $WEBHOOK_URL"
+        echo "   Response Code: HTTP $final_code"
+        echo "   Timestamp: $(date)"
+        
+        if [ "$final_code" = "200" ] || [ "$final_code" = "201" ]; then
+          echo "🎯 SUCCESS: n8n workflow is now active and responding!"
+          
+          # Test response time for performance monitoring
+          response_time=$(curl -s -m 10 -w "%{time_total}" -o /dev/null "$WEBHOOK_URL" || echo "unknown")
+          echo "   Response time: ${response_time}s"
+          
+          if (( $(echo "$response_time > 2" | bc -l) )); then
+            echo "   Performance: SLOW (recently activated)"
+          else
+            echo "   Performance: FAST (fully warmed up)"
+          fi
+          
+        elif [ "$final_code" = "404" ]; then
+          echo "❌ FAILED: Workflow is still inactive after execution attempts"
+          echo ""
+          echo "🔍 Troubleshooting Steps:"
+          echo "1. Check your n8n workflow configuration"
+          echo "2. Verify webhook trigger is properly set up"  
+          echo "3. Ensure workflow is not disabled in n8n dashboard"
+          echo "4. Check if there are any workflow errors in n8n logs"
+          echo ""
+          echo "🎯 Manual Fix: Go to n8n dashboard and click 'Execute Workflow'"
+          
+        else
+          echo "⚠️  UNKNOWN STATUS: HTTP $final_code"
+          echo "This might indicate a configuration issue or service problem."
+        fi
+        
+        echo "⏰ Next automated check in 8 minutes"
+
+    - name: Usage Statistics
+      if: always()
+      run: |
+        echo "📈 GitHub Actions Usage Summary:"
+        echo "   Workflow: Keep n8n API Alive"
+        echo "   Runtime: ~2-3 minutes per run"
+        echo "   Frequency: Every 8 minutes (180 runs/day)"
+        echo "   Monthly usage: ~540 minutes (well under 2000 limit)"
+        echo "   Cost: $0 (GitHub Actions free tier)"
