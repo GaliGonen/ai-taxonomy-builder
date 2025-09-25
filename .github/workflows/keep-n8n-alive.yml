@@ -1,10 +1,10 @@
-name: Keep n8n API Alive
+name: Keep n8n API Alive (Auto-Activate)
 
 on:
   schedule:
-    # Run every 10 minutes
-    - cron: '*/10 * * * *'
-  workflow_dispatch:  # Allows manual triggering for testing
+    # Run every 8 minutes (more frequent to catch sleep faster)
+    - cron: '*/8 * * * *'
+  workflow_dispatch:
     inputs:
       test_run:
         description: 'Manual test run'
@@ -16,83 +16,128 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Ping n8n API
+    - name: Wake and Activate n8n
       run: |
-        echo "🚀 Starting keep-alive ping at $(date)"
+        echo "🚀 Starting n8n keep-alive and auto-activation at $(date)"
         
-        # API endpoint
-        API_URL="https://n8n-render-rwyu.onrender.com/webhook-test/search-ai-use-cases"
+        # URLs
+        N8N_BASE_URL="https://n8n-render-rwyu.onrender.com"
+        WEBHOOK_URL="$N8N_BASE_URL/webhook-test/search-ai-use-cases"
         
-        # Initialize retry counter
+        echo "🔍 Step 1: Checking if n8n service is awake..."
+        
+        # First, try to wake up the Render service by hitting the main URL
+        echo "⚡ Waking up Render service..."
+        wake_response=$(curl -s -m 60 -w "HTTP_CODE:%{http_code}" "$N8N_BASE_URL" || echo "FAILED")
+        wake_code=$(echo "$wake_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        
+        if [ "$wake_code" = "200" ]; then
+          echo "✅ n8n service is awake (HTTP $wake_code)"
+        else
+          echo "⚠️  n8n service wake attempt: HTTP $wake_code (might be starting up...)"
+          echo "⏱️  Waiting 45 seconds for full startup..."
+          sleep 45
+        fi
+        
+        echo "🔍 Step 2: Testing webhook endpoint..."
+        
+        # Now test the webhook endpoint
         retry_count=0
-        max_retries=3
+        max_retries=4
         success=false
         
-        # Retry loop
         while [ $retry_count -lt $max_retries ] && [ "$success" = false ]; do
-          echo "📡 Ping attempt $((retry_count + 1)) of $max_retries..."
+          echo "📡 Testing webhook - attempt $((retry_count + 1)) of $max_retries..."
           
-          # Make the ping request with timeout
-          if curl -s -f -m 30 "$API_URL" > /dev/null 2>&1; then
-            echo "✅ Ping successful! API is alive and responding."
+          webhook_response=$(curl -s -m 30 -w "HTTP_CODE:%{http_code}" \
+            -H "Content-Type: application/json" \
+            -H "User-Agent: GitHub-Actions-KeepAlive/1.0" \
+            "$WEBHOOK_URL" 2>/dev/null || echo "FAILED")
+          
+          webhook_code=$(echo "$webhook_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+          
+          echo "Webhook response code: $webhook_code"
+          
+          if [ "$webhook_code" = "200" ] || [ "$webhook_code" = "201" ] || [ "$webhook_code" = "204" ]; then
+            echo "✅ Webhook active! n8n workflow is running."
             success=true
-          else
+          elif [ "$webhook_code" = "404" ]; then
+            echo "❌ Webhook not found (404) - workflow might be inactive"
             retry_count=$((retry_count + 1))
             if [ $retry_count -lt $max_retries ]; then
-              echo "❌ Ping failed, retrying in 30 seconds..."
+              echo "⏱️  Waiting 30 seconds before retry (workflow might be starting)..."
               sleep 30
-            else
-              echo "🚨 All ping attempts failed after $max_retries tries"
-              exit 1
+            fi
+          elif [ "$webhook_code" = "000" ] || [ "$webhook_code" = "" ]; then
+            echo "❌ No response from webhook - service might still be starting"
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+              echo "⏱️  Waiting 30 seconds for service to fully start..."
+              sleep 30
+            fi
+          else
+            echo "⚠️  Unexpected response: HTTP $webhook_code"
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+              echo "⏱️  Waiting 20 seconds before retry..."
+              sleep 20
             fi
           fi
         done
         
-        echo "🎯 Keep-alive completed successfully at $(date)"
+        # Final status
+        if [ "$success" = true ]; then
+          echo "🎯 SUCCESS: n8n workflow is active and responding!"
+        else
+          echo "🚨 FAILED: Unable to activate n8n workflow after $max_retries attempts"
+          echo ""
+          echo "🔍 Diagnostic Information:"
+          echo "   - Service wake status: HTTP $wake_code"
+          echo "   - Final webhook status: HTTP $webhook_code"
+          echo "   - Service URL: $N8N_BASE_URL"
+          echo "   - Webhook URL: $WEBHOOK_URL"
+          echo ""
+          echo "💡 Possible solutions:"
+          echo "   1. Check if your n8n workflow is properly configured"
+          echo "   2. Verify the webhook URL path is correct"
+          echo "   3. Manually activate the workflow in n8n dashboard"
+          echo "   4. Check Render service logs for errors"
+          exit 1
+        fi
 
-    - name: Log Status
+    - name: Extended Health Monitor
       if: always()
       run: |
-        if [ "${{ job.status }}" == "success" ]; then
-          echo "📊 Status: SUCCESS - API kept alive successfully"
-        else
-          echo "📊 Status: FAILED - Unable to reach API"
-          echo "🔍 This could indicate:"
-          echo "   - Network issues"
-          echo "   - API endpoint changes"
-          echo "   - Render service problems"
-        fi
+        echo "🏥 Running extended health monitoring..."
         
-        echo "⏰ Next scheduled run: $(date -d '+10 minutes')"
-
-  health-check:
-    runs-on: ubuntu-latest
-    needs: keep-alive
-    if: always()
-    
-    steps:
-    - name: Detailed Health Check
-      run: |
-        echo "🏥 Running detailed health check..."
+        WEBHOOK_URL="https://n8n-render-rwyu.onrender.com/webhook-test/search-ai-use-cases"
         
-        API_URL="https://n8n-render-rwyu.onrender.com/webhook-test/search-ai-use-cases"
+        # Test response time and detailed status
+        start_time=$(date +%s.%N)
+        response=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}|TIME:%{time_total}" "$WEBHOOK_URL" || echo "FAILED")
+        end_time=$(date +%s.%N)
         
-        # Check response time and status
-        echo "📊 Testing response time and status..."
+        http_code=$(echo "$response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        response_time=$(echo "$response" | grep -o "TIME:[0-9.]*" | cut -d: -f2 || echo "unknown")
         
-        response_time=$(curl -o /dev/null -s -w "%{time_total}" "$API_URL" || echo "failed")
-        http_code=$(curl -o /dev/null -s -w "%{http_code}" "$API_URL" || echo "000")
-        
-        echo "HTTP Status Code: $http_code"
-        echo "Response Time: ${response_time}s"
+        echo "📊 Health Check Results:"
+        echo "   Status Code: $http_code"
+        echo "   Response Time: ${response_time}s"
+        echo "   Timestamp: $(date)"
         
         if [ "$http_code" = "200" ]; then
-          echo "✅ Health Check: PASSED"
-          if (( $(echo "$response_time > 2" | bc -l) )); then
-            echo "⚠️  Warning: Response time is high (${response_time}s). API might be waking up."
+          if (( $(echo "$response_time > 3" | bc -l) )); then
+            echo "⚠️  Status: SLOW - API responding but slow (${response_time}s)"
+            echo "   This might indicate the service was recently awakened"
           else
-            echo "🚀 Excellent: Fast response time (${response_time}s). API is fully active."
+            echo "✅ Status: EXCELLENT - Fast response (${response_time}s)"
           fi
+        elif [ "$http_code" = "404" ]; then
+          echo "❌ Status: WORKFLOW INACTIVE - n8n workflow not running"
+        elif [ "$http_code" = "000" ]; then
+          echo "❌ Status: SERVICE DOWN - No response from server"
         else
-          echo "❌ Health Check: FAILED (HTTP $http_code)"
+          echo "⚠️  Status: UNUSUAL - HTTP $http_code"
         fi
+        
+        echo "⏰ Next check in 8 minutes at $(date -d '+8 minutes')"
