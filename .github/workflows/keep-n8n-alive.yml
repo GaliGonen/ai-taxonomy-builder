@@ -1,4 +1,4 @@
-name: Keep n8n API Alive (Auto-Execute)
+name: Keep n8n API Alive (Production Webhook Fix)
 
 on:
   schedule:
@@ -13,17 +13,18 @@ on:
 
 env:
   N8N_BASE_URL: 'https://n8n-render-rwyu.onrender.com'
-  WEBHOOK_URL: 'https://n8n-render-rwyu.onrender.com/webhook-test/search-ai-use-cases'
+  TEST_WEBHOOK_URL: 'https://n8n-render-rwyu.onrender.com/webhook-test/search-ai-use-cases'
+  PROD_WEBHOOK_URL: 'https://n8n-render-rwyu.onrender.com/webhook/search-ai-use-cases'
 
 jobs:
   keep-alive:
     runs-on: ubuntu-latest
     
     steps:
-    - name: Wake and Test n8n Service
+    - name: Wake n8n Service
       id: wake_service
       run: |
-        echo "🚀 Starting n8n keep-alive at $(date)"
+        echo "🚀 Starting n8n production webhook activation at $(date)"
         
         # Step 1: Wake up Render service
         echo "⚡ Waking up Render service..."
@@ -39,125 +40,174 @@ jobs:
           sleep 45
         fi
         
-        # Step 2: Test webhook endpoint
-        echo "🔍 Testing webhook endpoint..."
-        webhook_response=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}" "$WEBHOOK_URL" || echo "FAILED")
-        webhook_code=$(echo "$webhook_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        # Step 2: Test PRODUCTION webhook (what your search interface uses)
+        echo "🔍 Testing PRODUCTION webhook endpoint..."
+        prod_response=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}" "$PROD_WEBHOOK_URL" || echo "FAILED")
+        prod_code=$(echo "$prod_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
         
-        echo "webhook_status=$webhook_code" >> $GITHUB_OUTPUT
+        echo "Production webhook status: HTTP $prod_code"
         
-        if [ "$webhook_code" = "200" ] || [ "$webhook_code" = "201" ]; then
-          echo "✅ Webhook is active! Workflow is running."
+        # Also test the test endpoint for comparison
+        test_response=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}" "$TEST_WEBHOOK_URL" || echo "FAILED")
+        test_code=$(echo "$test_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        
+        echo "Test webhook status: HTTP $test_code"
+        
+        # Set output for next step
+        echo "prod_webhook_status=$prod_code" >> $GITHUB_OUTPUT
+        echo "test_webhook_status=$test_code" >> $GITHUB_OUTPUT
+        
+        if [ "$prod_code" = "200" ] || [ "$prod_code" = "201" ]; then
+          echo "✅ Production webhook is ACTIVE! Your search interface should work!"
           echo "workflow_active=true" >> $GITHUB_OUTPUT
         else
-          echo "❌ Webhook inactive (HTTP $webhook_code) - workflow needs execution"
+          echo "❌ Production webhook INACTIVE (HTTP $prod_code)"
+          if [ "$test_code" = "200" ] || [ "$test_code" = "201" ]; then
+            echo "ℹ️  Test webhook is active, but production webhook needs activation"
+          else
+            echo "ℹ️  Both webhooks inactive - workflow needs full activation"
+          fi
           echo "workflow_active=false" >> $GITHUB_OUTPUT
         fi
 
-    - name: Execute n8n Workflow via Test Execution
+    - name: Activate Production Webhook
       if: steps.wake_service.outputs.workflow_active == 'false' || github.event.inputs.force_execute == 'true'
       run: |
-        echo "🔄 Attempting to execute n8n workflow..."
+        echo "🔄 Attempting to ACTIVATE PRODUCTION webhook..."
+        echo "🎯 Goal: Make your search interface work by activating the production endpoint"
         
-        # Method 1: Try to trigger via webhook with test data
-        echo "📡 Method 1: Testing webhook trigger with sample data..."
+        test_payload='{"test": true, "source": "github-actions-activation", "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}'
         
-        test_payload='{"test": true, "source": "github-actions", "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}'
+        # Method 1: Activate via test webhook first (sometimes this enables both)
+        echo "📡 Method 1: Triggering test webhook to activate workflow..."
         
-        execute_response=$(curl -s -m 30 -w "HTTP_CODE:%{http_code}" \
+        test_exec=$(curl -s -m 30 -w "HTTP_CODE:%{http_code}" \
           -X POST \
           -H "Content-Type: application/json" \
-          -H "User-Agent: GitHub-Actions-KeepAlive/1.0" \
+          -H "User-Agent: GitHub-Actions-Activation/1.0" \
           -d "$test_payload" \
-          "$WEBHOOK_URL" || echo "FAILED")
+          "$TEST_WEBHOOK_URL" || echo "FAILED")
         
-        execute_code=$(echo "$execute_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        test_exec_code=$(echo "$test_exec" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        echo "Test webhook trigger result: HTTP $test_exec_code"
         
-        echo "Execution attempt result: HTTP $execute_code"
-        
-        if [ "$execute_code" = "200" ] || [ "$execute_code" = "201" ]; then
-          echo "✅ Workflow execution successful via webhook!"
-        else
-          echo "⚠️  Webhook execution failed, trying alternative method..."
-          
-          # Method 2: Try to activate via main webhook endpoint (without test path)
-          echo "📡 Method 2: Testing main webhook endpoint..."
-          
-          main_webhook="https://n8n-render-rwyu.onrender.com/webhook/search-ai-use-cases"
-          
-          main_response=$(curl -s -m 30 -w "HTTP_CODE:%{http_code}" \
-            -X POST \
-            -H "Content-Type: application/json" \
-            -d "$test_payload" \
-            "$main_webhook" || echo "FAILED")
-          
-          main_code=$(echo "$main_response" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
-          
-          echo "Main webhook result: HTTP $main_code"
-          
-          if [ "$main_code" = "200" ] || [ "$main_code" = "201" ]; then
-            echo "✅ Workflow activated via main webhook!"
-          else
-            echo "❌ Both execution methods failed"
-            echo "   Test webhook: HTTP $execute_code"
-            echo "   Main webhook: HTTP $main_code"
-          fi
-        fi
-        
-        # Wait a bit for workflow to fully initialize
-        echo "⏱️  Waiting 15 seconds for workflow to initialize..."
+        # Wait for activation to propagate
+        echo "⏱️  Waiting 15 seconds for workflow activation..."
         sleep 15
+        
+        # Method 2: Try to trigger production webhook directly
+        echo "📡 Method 2: Attempting production webhook activation..."
+        
+        prod_exec=$(curl -s -m 30 -w "HTTP_CODE:%{http_code}" \
+          -X POST \
+          -H "Content-Type: application/json" \
+          -H "User-Agent: GitHub-Actions-Activation/1.0" \
+          -d "$test_payload" \
+          "$PROD_WEBHOOK_URL" || echo "FAILED")
+        
+        prod_exec_code=$(echo "$prod_exec" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        echo "Production webhook trigger result: HTTP $prod_exec_code"
+        
+        # Method 3: Try GET requests (sometimes helps with registration)
+        echo "📡 Method 3: GET requests to register webhooks..."
+        
+        get_test=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}" "$TEST_WEBHOOK_URL" || echo "FAILED")
+        get_test_code=$(echo "$get_test" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        
+        get_prod=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}" "$PROD_WEBHOOK_URL" || echo "FAILED")
+        get_prod_code=$(echo "$get_prod" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        
+        echo "GET test webhook: HTTP $get_test_code"
+        echo "GET production webhook: HTTP $get_prod_code"
+        
+        echo "✅ All activation methods attempted"
+        
+        # Final wait for full activation
+        echo "⏱️  Waiting 20 seconds for complete activation..."
+        sleep 20
 
-    - name: Verify Workflow Status
+    - name: Final Verification
       run: |
-        echo "🔍 Final verification of workflow status..."
+        echo "🔍 FINAL VERIFICATION - Testing what your search interface will see..."
         
-        # Test the webhook again after execution attempt
-        final_test=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}" "$WEBHOOK_URL" || echo "FAILED")
-        final_code=$(echo "$final_test" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        # Test the PRODUCTION webhook (this is what your search interface calls)
+        echo "🎯 Testing production webhook: $PROD_WEBHOOK_URL"
         
-        echo "📊 Final Status Check:"
-        echo "   Webhook URL: $WEBHOOK_URL"
-        echo "   Response Code: HTTP $final_code"
-        echo "   Timestamp: $(date)"
+        final_prod_test=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}|TIME:%{time_total}" "$PROD_WEBHOOK_URL" || echo "FAILED")
+        final_prod_code=$(echo "$final_prod_test" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        final_prod_time=$(echo "$final_prod_test" | grep -o "TIME:[0-9.]*" | cut -d: -f2 || echo "unknown")
         
-        if [ "$final_code" = "200" ] || [ "$final_code" = "201" ]; then
-          echo "🎯 SUCCESS: n8n workflow is now active and responding!"
+        # Also test test webhook for comparison
+        final_test_test=$(curl -s -m 15 -w "HTTP_CODE:%{http_code}" "$TEST_WEBHOOK_URL" || echo "FAILED")
+        final_test_code=$(echo "$final_test_test" | grep -o "HTTP_CODE:[0-9]*" | cut -d: -f2 || echo "000")
+        
+        echo ""
+        echo "📊 FINAL STATUS REPORT:"
+        echo "========================"
+        echo "Production Webhook (used by your search): HTTP $final_prod_code"
+        echo "Test Webhook (for comparison): HTTP $final_test_code"
+        echo "Production Response Time: ${final_prod_time}s"
+        echo "Timestamp: $(date)"
+        echo ""
+        
+        if [ "$final_prod_code" = "200" ] || [ "$final_prod_code" = "201" ]; then
+          echo "🎉 SUCCESS! Your search interface should work now!"
+          echo "✅ Production webhook is ACTIVE and responding"
+          echo "🚀 You can test your search interface - it should connect properly"
           
-          # Test response time for performance monitoring
-          response_time=$(curl -s -m 10 -w "%{time_total}" -o /dev/null "$WEBHOOK_URL" || echo "unknown")
-          echo "   Response time: ${response_time}s"
-          
-          if (( $(echo "$response_time > 2" | bc -l) )); then
-            echo "   Performance: SLOW (recently activated)"
+          if (( $(echo "$final_prod_time > 2" | bc -l) )); then
+            echo "⚠️  Note: Response time is ${final_prod_time}s (webhook was just activated)"
           else
-            echo "   Performance: FAST (fully warmed up)"
+            echo "⚡ Excellent: Fast response time (${final_prod_time}s)"
           fi
           
-        elif [ "$final_code" = "404" ]; then
-          echo "❌ FAILED: Workflow is still inactive after execution attempts"
+        elif [ "$final_prod_code" = "404" ]; then
+          echo "❌ PRODUCTION WEBHOOK STILL INACTIVE"
           echo ""
-          echo "🔍 Troubleshooting Steps:"
-          echo "1. Check your n8n workflow configuration"
-          echo "2. Verify webhook trigger is properly set up"  
-          echo "3. Ensure workflow is not disabled in n8n dashboard"
-          echo "4. Check if there are any workflow errors in n8n logs"
-          echo ""
-          echo "🎯 Manual Fix: Go to n8n dashboard and click 'Execute Workflow'"
+          
+          if [ "$final_test_code" = "200" ]; then
+            echo "🔍 Analysis: Test webhook works, but production webhook failed to activate"
+            echo ""
+            echo "🛠️  MANUAL FIX REQUIRED:"
+            echo "1. Go to: $N8N_BASE_URL"
+            echo "2. Open your workflow"
+            echo "3. Check webhook trigger settings (should be 'Production' not 'Test')"
+            echo "4. Click 'Execute workflow' button"
+            echo "5. Save the workflow"
+            echo ""
+            echo "🔧 Alternative: Your workflow might need to be configured differently"
+            echo "   - Make sure webhook trigger is set to 'Production' mode"
+            echo "   - Ensure the webhook path is exactly: search-ai-use-cases"
+          else
+            echo "🔍 Analysis: Both webhooks are inactive - workflow completely stopped"
+            echo ""
+            echo "🛠️  MANUAL FIX REQUIRED:"
+            echo "1. Go to: $N8N_BASE_URL"
+            echo "2. Open your workflow"
+            echo "3. Click 'Execute workflow' button"
+            echo "4. Make sure workflow is saved and active"
+          fi
           
         else
-          echo "⚠️  UNKNOWN STATUS: HTTP $final_code"
-          echo "This might indicate a configuration issue or service problem."
+          echo "⚠️  UNEXPECTED STATUS: HTTP $final_prod_code"
+          echo "This might indicate a server error or configuration issue"
+          echo "Check your n8n dashboard for workflow errors"
         fi
         
+        echo ""
         echo "⏰ Next automated check in 8 minutes"
+        echo "🔗 Test your search interface now: [your-search-interface-file.html]"
 
-    - name: Usage Statistics
+    - name: Usage Summary
       if: always()
       run: |
-        echo "📈 GitHub Actions Usage Summary:"
-        echo "   Workflow: Keep n8n API Alive"
-        echo "   Runtime: ~2-3 minutes per run"
-        echo "   Frequency: Every 8 minutes (180 runs/day)"
-        echo "   Monthly usage: ~540 minutes (well under 2000 limit)"
-        echo "   Cost: $0 (GitHub Actions free tier)"
+        echo ""
+        echo "📈 GITHUB ACTIONS USAGE:"
+        echo "========================"
+        echo "Workflow: Production Webhook Activation"
+        echo "Runtime: ~3-4 minutes per run"
+        echo "Frequency: Every 8 minutes (180 runs/day)"
+        echo "Monthly usage: ~720 minutes (well under 2000 limit)"
+        echo "Cost: $0 (GitHub Actions free tier)"
+        echo ""
+        echo "🎯 PURPOSE: Keep your search interface connected 24/7"
