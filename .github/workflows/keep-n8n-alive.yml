@@ -1,0 +1,98 @@
+name: Keep n8n API Alive
+
+on:
+  schedule:
+    # Run every 10 minutes
+    - cron: '*/10 * * * *'
+  workflow_dispatch:  # Allows manual triggering for testing
+    inputs:
+      test_run:
+        description: 'Manual test run'
+        required: false
+        default: 'true'
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Ping n8n API
+      run: |
+        echo "🚀 Starting keep-alive ping at $(date)"
+        
+        # API endpoint
+        API_URL="https://n8n-render-rwyu.onrender.com/webhook-test/search-ai-use-cases"
+        
+        # Initialize retry counter
+        retry_count=0
+        max_retries=3
+        success=false
+        
+        # Retry loop
+        while [ $retry_count -lt $max_retries ] && [ "$success" = false ]; do
+          echo "📡 Ping attempt $((retry_count + 1)) of $max_retries..."
+          
+          # Make the ping request with timeout
+          if curl -s -f -m 30 "$API_URL" > /dev/null 2>&1; then
+            echo "✅ Ping successful! API is alive and responding."
+            success=true
+          else
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+              echo "❌ Ping failed, retrying in 30 seconds..."
+              sleep 30
+            else
+              echo "🚨 All ping attempts failed after $max_retries tries"
+              exit 1
+            fi
+          fi
+        done
+        
+        echo "🎯 Keep-alive completed successfully at $(date)"
+
+    - name: Log Status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "📊 Status: SUCCESS - API kept alive successfully"
+        else
+          echo "📊 Status: FAILED - Unable to reach API"
+          echo "🔍 This could indicate:"
+          echo "   - Network issues"
+          echo "   - API endpoint changes"
+          echo "   - Render service problems"
+        fi
+        
+        echo "⏰ Next scheduled run: $(date -d '+10 minutes')"
+
+  health-check:
+    runs-on: ubuntu-latest
+    needs: keep-alive
+    if: always()
+    
+    steps:
+    - name: Detailed Health Check
+      run: |
+        echo "🏥 Running detailed health check..."
+        
+        API_URL="https://n8n-render-rwyu.onrender.com/webhook-test/search-ai-use-cases"
+        
+        # Check response time and status
+        echo "📊 Testing response time and status..."
+        
+        response_time=$(curl -o /dev/null -s -w "%{time_total}" "$API_URL" || echo "failed")
+        http_code=$(curl -o /dev/null -s -w "%{http_code}" "$API_URL" || echo "000")
+        
+        echo "HTTP Status Code: $http_code"
+        echo "Response Time: ${response_time}s"
+        
+        if [ "$http_code" = "200" ]; then
+          echo "✅ Health Check: PASSED"
+          if (( $(echo "$response_time > 2" | bc -l) )); then
+            echo "⚠️  Warning: Response time is high (${response_time}s). API might be waking up."
+          else
+            echo "🚀 Excellent: Fast response time (${response_time}s). API is fully active."
+          fi
+        else
+          echo "❌ Health Check: FAILED (HTTP $http_code)"
+        fi
