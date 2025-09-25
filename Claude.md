@@ -1,0 +1,1 @@
+the purpose of the project is to say "hi gali"
