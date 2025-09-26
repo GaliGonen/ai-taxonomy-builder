@@ -428,7 +428,6 @@
         
         let isApiActive = false;
 
-        // Check API status
         async function checkApiStatus() {
             try {
                 apiStatus.innerHTML = 'Checking API status...';
@@ -459,7 +458,6 @@
             }
         }
 
-        // Wake up API
         async function wakeUpApi() {
             apiStatus.innerHTML = 'Waking up API... (this may take 30-60 seconds)';
             apiStatus.className = 'api-status checking';
@@ -495,12 +493,10 @@
             return false;
         }
 
-        // Wake up from status bar
         async function wakeUpApiFromStatus() {
             await wakeUpApi();
         }
 
-        // Search functionality
         searchForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -512,18 +508,15 @@
             await performSearch();
         });
 
-        // Clear filters
         clearBtn.addEventListener('click', () => {
             searchForm.reset();
             if (isApiActive) performSearch();
         });
 
-        // Perform search - FIXED VERSION
         async function performSearch() {
             const formData = new FormData(searchForm);
             const searchData = {};
             
-            // Build search object
             for (let [key, value] of formData.entries()) {
                 if (value.trim()) {
                     searchData[key] = value.trim();
@@ -531,8 +524,6 @@
             }
             
             console.log('Sending search data:', searchData);
-            
-            // Show loading state
             showLoading();
             
             try {
@@ -558,9 +549,10 @@
                 const responseData = await response.json();
                 console.log('API Response:', responseData);
                 
-                // Handle correct response structure
-                if (responseData.success && responseData.data) {
-                    displayResults(responseData.data);
+                if (responseData.success && responseData.data && Array.isArray(responseData.data)) {
+                    const extractedData = responseData.data.map(item => item.json || item);
+                    console.log('Extracted data:', extractedData);
+                    displayResults(extractedData);
                 } else {
                     displayResults([]);
                 }
@@ -577,7 +569,6 @@
             }
         }
 
-        // Show wake-up notice
         function showWakeUpNotice() {
             resultsContainer.style.display = 'block';
             resultsCount.textContent = 'API Wake-Up Required';
@@ -594,32 +585,25 @@
             `;
         }
 
-        // Show loading state
         function showLoading() {
             resultsContainer.style.display = 'block';
             resultsCount.textContent = 'Searching...';
             resultsList.innerHTML = '<div class="loading">Searching use cases...</div>';
         }
 
-        // Display results
-       function displayResults(data) {
-    const results = Array.isArray(data) ? data : [];
-    resultsCount.textContent = `${results.length} result${results.length !== 1 ? 's' : ''} found`;
-    
-    if (results.length === 0) {
-        resultsList.innerHTML = '<div class="loading">No use cases found matching your criteria. Try different search terms or clear some filters.</div>';
-        return;
-    }
-    
-    console.log('Displaying results:', results);
-    
-    // Extract the json property from each result
-    const extractedResults = results.map(item => item.json || item);
-    
-    resultsList.innerHTML = extractedResults.map(useCase => createUseCaseCard(useCase)).join('');
-}
+        function displayResults(data) {
+            const results = Array.isArray(data) ? data : [];
+            resultsCount.textContent = `${results.length} result${results.length !== 1 ? 's' : ''} found`;
+            
+            if (results.length === 0) {
+                resultsList.innerHTML = '<div class="loading">No use cases found matching your criteria. Try different search terms or clear some filters.</div>';
+                return;
+            }
+            
+            console.log('Displaying results:', results);
+            resultsList.innerHTML = results.map(useCase => createUseCaseCard(useCase)).join('');
+        }
 
-        // Create use case card
         function createUseCaseCard(useCase) {
             const complexityClass = useCase.implementation_complexity ? 
                 useCase.implementation_complexity.toLowerCase() : '';
@@ -674,14 +658,12 @@
             `;
         }
 
-        // Show error
         function showError(message) {
             resultsContainer.style.display = 'block';
             resultsCount.textContent = 'Search Error';
             resultsList.innerHTML = `<div class="error">${escapeHtml(message)}</div>`;
         }
 
-        // Escape HTML
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
@@ -689,11 +671,9 @@
             return div.innerHTML;
         }
 
-        // Make functions global
         window.wakeUpApi = wakeUpApi;
         window.wakeUpApiFromStatus = wakeUpApiFromStatus;
 
-        // Initialize
         window.addEventListener('load', async () => {
             console.log('AI Use Cases Search Interface loaded');
             await checkApiStatus();
@@ -703,7 +683,6 @@
             }
         });
 
-        // Periodic status check
         setInterval(async () => {
             if (!isApiActive) {
                 await checkApiStatus();
