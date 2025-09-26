@@ -602,18 +602,22 @@
         }
 
         // Display results
-        function displayResults(data) {
-            const results = Array.isArray(data) ? data : [];
-            resultsCount.textContent = `${results.length} result${results.length !== 1 ? 's' : ''} found`;
-            
-            if (results.length === 0) {
-                resultsList.innerHTML = '<div class="loading">No use cases found matching your criteria. Try different search terms or clear some filters.</div>';
-                return;
-            }
-            
-            console.log('Displaying results:', results);
-            resultsList.innerHTML = results.map(useCase => createUseCaseCard(useCase)).join('');
-        }
+       function displayResults(data) {
+    const results = Array.isArray(data) ? data : [];
+    resultsCount.textContent = `${results.length} result${results.length !== 1 ? 's' : ''} found`;
+    
+    if (results.length === 0) {
+        resultsList.innerHTML = '<div class="loading">No use cases found matching your criteria. Try different search terms or clear some filters.</div>';
+        return;
+    }
+    
+    console.log('Displaying results:', results);
+    
+    // Extract the json property from each result
+    const extractedResults = results.map(item => item.json || item);
+    
+    resultsList.innerHTML = extractedResults.map(useCase => createUseCaseCard(useCase)).join('');
+}
 
         // Create use case card
         function createUseCaseCard(useCase) {
