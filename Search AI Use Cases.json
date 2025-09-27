@@ -1,0 +1,147 @@
+{
+  "name": "Search AI Use Cases",
+  "nodes": [
+    {
+      "parameters": {
+        "multipleMethods": true,
+        "path": "search-ai-use-cases",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "063522b0-8646-4aa1-bce4-84a135166d8b",
+      "name": "Webhook",
+      "webhookId": "2ce72ceb-9496-4f77-aae1-b18aa013c32f"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get query parameters from webhook\nconst params = $input.first().json.body || $input.first().json || {};\nconsole.log('Search parameters:', params);\n\n// Build dynamic query\nlet conditions = [];\nlet values = [];\nlet paramIndex = 1;\n\n// Base query\nlet query = `\n  SELECT id, use_case_title, department, role, seniority_level,\n         business_function, ai_category, use_case_description,\n         implementation_complexity, typical_roi_timeline,\n         success_metrics, example_companies, created_date\n  FROM ai_use_cases\n`;\n\n// Add search conditions\nif (params.role) {\n  conditions.push(`role ILIKE $${paramIndex}`);\n  values.push(`%${params.role}%`);\n  paramIndex++;\n}\n\nif (params.department) {\n  conditions.push(`department = $${paramIndex}`);\n  values.push(params.department);\n  paramIndex++;\n}\n\nif (params.complexity) {\n  conditions.push(`seniority_level = $${paramIndex}`);\n  values.push(params.complexity);\n  paramIndex++;\n}\n\nif (params.keywords) {\n  conditions.push(`(use_case_title ILIKE $${paramIndex} OR use_case_description ILIKE $${paramIndex})`);\n  values.push(`%${params.keywords}%`);\n  paramIndex++;\n}\n\n// Add WHERE clause if conditions exist\nif (conditions.length > 0) {\n  query += ' WHERE ' + conditions.join(' AND ');\n}\n\nquery += ' ORDER BY created_date DESC LIMIT 20';\n\nreturn [{\n  json: {\n    query: query,\n    values: values\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "60692f01-37da-4d18-aab5-580201a8ad8e",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "{{ $json.query }}",
+        "options": {
+          "queryReplacement": "={{ $json.values }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        624,
+        0
+      ],
+      "id": "8678a8d3-19cc-43ca-b67b-cfa9941bc240",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "tRBvT7PwkiyzkbMZ",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"data\": {{ JSON.stringify($('Execute a SQL query').all()) }},\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET,POST,OPTIONS"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        832,
+        0
+      ],
+      "id": "bd6117f1-322f-4c5b-b3b8-1b4c6ecd0098",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "c5b74d3d-5b1e-4bd1-ba62-e781006e2db5",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d860cc5e88d35df180fa246a0a46ae1bab1ce5e442861b6c027d3f1a2bcd9c2"
+  },
+  "id": "jM6WYqPlIKgHH1Jl",
+  "tags": []
+}
