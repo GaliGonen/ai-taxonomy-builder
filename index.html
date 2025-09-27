@@ -285,6 +285,58 @@
             background: #f3e8ff;
             color: #7c2d12;
         }
+
+        /* Complete colored badge system */
+        .badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+
+        .badge-role {
+            background: #e3f2fd;
+            color: #1565c0;
+        }
+
+        .badge-dept {
+            background: #f3e5f5;
+            color: #6a1b9a;
+        }
+
+        .badge-seniority {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .badge-complexity-easy,
+        .badge-complexity-junior {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .badge-complexity-medium {
+            background: #fff3e0;
+            color: #e65100;
+        }
+
+        .badge-complexity-hard,
+        .badge-complexity-senior {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .badge-category {
+            background: #ede7f6;
+            color: #5e35b1;
+        }
+
+        .badge-roi {
+            background: #fce4ec;
+            color: #c2185b;
+        }
         
         .loading {
             text-align: center;
@@ -605,50 +657,32 @@
         }
 
         function createUseCaseCard(useCase) {
-            const complexityClass = useCase.implementation_complexity ? 
-                useCase.implementation_complexity.toLowerCase() : '';
-                
+            const complexityClass = getComplexityClass(useCase.implementation_complexity);
+
             return `
                 <div class="use-case-card">
                     <h3 class="use-case-title">${escapeHtml(useCase.use_case_title)}</h3>
-                    
+
                     <div class="use-case-meta">
-                        <div class="meta-item">
-                            <span class="meta-label">Role:</span>
-                            <span class="meta-value">${escapeHtml(useCase.role)}${useCase.seniority_level ? ` (${useCase.seniority_level})` : ''}</span>
-                        </div>
-                        <div class="meta-item">
-                            <span class="meta-label">Department:</span>
-                            <span class="meta-value">${escapeHtml(useCase.department)}</span>
-                        </div>
-                        ${useCase.business_function ? `
-                        <div class="meta-item">
-                            <span class="meta-label">Function:</span>
-                            <span class="meta-value">${escapeHtml(useCase.business_function)}</span>
-                        </div>
-                        ` : ''}
+                        ${useCase.role ? `<span class="badge badge-role">Role: ${escapeHtml(useCase.role)}</span>` : ''}
+                        ${useCase.department ? `<span class="badge badge-dept">Dept: ${escapeHtml(useCase.department)}</span>` : ''}
+                        ${useCase.seniority_level ? `<span class="badge badge-seniority">Level: ${escapeHtml(useCase.seniority_level)}</span>` : ''}
+                        ${useCase.implementation_complexity ? `<span class="badge ${complexityClass}">Complexity: ${escapeHtml(useCase.implementation_complexity)}</span>` : ''}
+                        ${useCase.ai_category ? `<span class="badge badge-category">Category: ${escapeHtml(useCase.ai_category)}</span>` : ''}
+                        ${useCase.typical_roi_timeline ? `<span class="badge badge-roi">ROI Timeline: ${escapeHtml(useCase.typical_roi_timeline)}</span>` : ''}
                     </div>
-                    
+
                     <div class="use-case-description">
                         ${escapeHtml(useCase.use_case_description)}
                     </div>
-                    
+
                     ${useCase.success_metrics ? `
                     <div class="success-metrics">
                         <div class="success-metrics-label">Success Metrics</div>
                         <div class="success-metrics-content">${escapeHtml(useCase.success_metrics)}</div>
                     </div>
                     ` : ''}
-                    
-                    <div class="tags-container">
-                        ${useCase.implementation_complexity ? 
-                            `<span class="tag tag-complexity ${complexityClass}">${useCase.implementation_complexity} Complexity</span>` : ''}
-                        ${useCase.ai_category ? 
-                            `<span class="tag tag-ai-category">${escapeHtml(useCase.ai_category)}</span>` : ''}
-                        ${useCase.typical_roi_timeline ? 
-                            `<span class="tag tag-timeline">${escapeHtml(useCase.typical_roi_timeline)}</span>` : ''}
-                    </div>
-                    
+
                     ${useCase.example_companies ? `
                     <div style="margin-top: 15px; font-size: 0.9rem; color: #6b7280;">
                         <strong>Examples:</strong> ${escapeHtml(useCase.example_companies)}
@@ -656,6 +690,14 @@
                     ` : ''}
                 </div>
             `;
+        }
+
+        function getComplexityClass(complexity) {
+            if (!complexity) return 'badge-complexity-medium';
+            const lower = complexity.toLowerCase();
+            if (lower.includes('easy') || lower.includes('low') || lower.includes('junior')) return 'badge-complexity-junior';
+            if (lower.includes('hard') || lower.includes('high') || lower.includes('senior')) return 'badge-complexity-senior';
+            return 'badge-complexity-medium';
         }
 
         function showError(message) {
