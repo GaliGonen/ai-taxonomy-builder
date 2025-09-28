@@ -199,7 +199,8 @@
         .use-case-sidebar {
             width: 200px;
             flex-shrink: 0;
-            margin-top: 120px;
+            margin-top: 140px;
+            align-self: flex-start;
         }
 
         .data-sources-sidebar {
@@ -245,7 +246,8 @@
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 20px;
+            padding-bottom: 4px;
         }
         
         .meta-item {
@@ -266,16 +268,17 @@
         .use-case-description {
             color: #4b5563;
             line-height: 1.6;
-            margin-bottom: 15px;
+            margin-bottom: 24px;
             font-size: 1rem;
         }
         
         .success-metrics {
             background: #f0f9ff;
-            padding: 15px;
+            padding: 18px;
             border-radius: 8px;
             border-left: 4px solid #3b82f6;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            margin-top: 8px;
         }
         
         .success-metrics-label {
@@ -351,21 +354,23 @@
             white-space: nowrap;
         }
 
+        /* Primary Info - Blue Family */
         .badge-role {
             background: #e3f2fd;
             color: #1565c0;
         }
 
         .badge-dept {
-            background: #f3e5f5;
-            color: #6a1b9a;
+            background: #e8f4fd;
+            color: #1976d2;
         }
 
         .badge-seniority {
-            background: #e8f5e9;
-            color: #2e7d32;
+            background: #f0f7ff;
+            color: #1e88e5;
         }
 
+        /* Complexity - Traffic Light System */
         .badge-complexity-easy,
         .badge-complexity-junior {
             background: #e8f5e9;
@@ -374,23 +379,25 @@
 
         .badge-complexity-medium {
             background: #fff3e0;
-            color: #e65100;
+            color: #f57c00;
         }
 
         .badge-complexity-hard,
         .badge-complexity-senior {
             background: #ffebee;
-            color: #c62828;
+            color: #d32f2f;
         }
 
+        /* Categories - Purple Family */
         .badge-category {
-            background: #ede7f6;
-            color: #5e35b1;
+            background: #f3e5f5;
+            color: #7b1fa2;
         }
 
+        /* Metrics - Orange Family */
         .badge-roi {
-            background: #fce4ec;
-            color: #c2185b;
+            background: #fff8e1;
+            color: #f57c00;
         }
         
         .loading {
