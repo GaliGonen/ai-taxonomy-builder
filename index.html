@@ -695,6 +695,12 @@
                         ${escapeHtml(useCase.use_case_description)}
                     </div>
 
+                    ${useCase.data_sources ? `
+                    <div style="margin-bottom: 15px; font-size: 0.9rem; color: #6b7280;">
+                        <strong>Data Sources:</strong> ${escapeHtml(useCase.data_sources)}
+                    </div>
+                    ` : ''}
+
                     ${useCase.success_metrics ? `
                     <div class="success-metrics">
                         <div class="success-metrics-label">Success Metrics</div>
@@ -702,12 +708,6 @@
                     </div>
                     ` : ''}
 
-                    ${useCase.data_sources ? `
-                    <div class="data-sources">
-                        <div class="data-sources-label">Data Sources</div>
-                        <div class="data-sources-content">${escapeHtml(useCase.data_sources)}</div>
-                    </div>
-                    ` : ''}
 
                     ${useCase.example_companies ? `
                     <div style="margin-top: 15px; font-size: 0.9rem; color: #6b7280;">
