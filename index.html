@@ -253,6 +253,26 @@
             color: #1e3a8a;
             font-size: 0.95rem;
         }
+
+        .data-sources {
+            background: #fdf4ff;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #a855f7;
+            margin-bottom: 15px;
+        }
+
+        .data-sources-label {
+            font-weight: 600;
+            color: #7c3aed;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+        }
+
+        .data-sources-content {
+            color: #6b21a8;
+            font-size: 0.95rem;
+        }
         
         .tags-container {
             display: flex;
@@ -668,7 +688,6 @@
                         ${useCase.seniority_level ? `<span class="badge badge-seniority">Level: ${escapeHtml(useCase.seniority_level)}</span>` : ''}
                         ${useCase.implementation_complexity ? `<span class="badge ${complexityClass}">Complexity: ${escapeHtml(useCase.implementation_complexity)}</span>` : ''}
                         ${useCase.ai_category ? `<span class="badge badge-category">Category: ${escapeHtml(useCase.ai_category)}</span>` : ''}
-                        ${useCase.data_sources ? `<span class="badge badge-category">Data Sources: ${escapeHtml(useCase.data_sources)}</span>` : ''}
                         ${useCase.typical_roi_timeline ? `<span class="badge badge-roi">ROI Timeline: ${escapeHtml(useCase.typical_roi_timeline)}</span>` : ''}
                     </div>
 
@@ -680,6 +699,13 @@
                     <div class="success-metrics">
                         <div class="success-metrics-label">Success Metrics</div>
                         <div class="success-metrics-content">${escapeHtml(useCase.success_metrics)}</div>
+                    </div>
+                    ` : ''}
+
+                    ${useCase.data_sources ? `
+                    <div class="data-sources">
+                        <div class="data-sources-label">Data Sources</div>
+                        <div class="data-sources-content">${escapeHtml(useCase.data_sources)}</div>
                     </div>
                     ` : ''}
 
