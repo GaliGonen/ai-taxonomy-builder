@@ -89,6 +89,41 @@ ai-taxonomy-builder/
 └── Claude.md            # Project documentation
 ```
 
+## Database Management
+
+### Modifying Existing Records
+
+To update, add, or delete use cases in the database:
+
+1. **Connect using DBeaver (recommended):**
+   - Install DBeaver Community Edition (free)
+   - Create new PostgreSQL connection:
+     - Host: `dpg-d36od98gjchc73cgp9p0-a.oregon-postgres.render.com`
+     - Database: `ai_taxonomy`
+     - Username: `ai_taxonomy_user`
+     - Password: See `config/database_config.md`
+
+2. **Navigate to data:**
+   - Expand `ai_taxonomy` → `public` → `Tables`
+   - Right-click `use_case_patterns` → "View Data"
+
+3. **Edit records:**
+   - Double-click any cell to edit content
+   - Use `+` button to add new rows
+   - Select rows and press Delete to remove
+   - Press `Ctrl+S` (or `Cmd+S`) to save changes
+
+4. **Verify changes:**
+   - Open frontend search interface
+   - Search for modified content
+   - Changes appear immediately (no refresh needed)
+
+### Alternative Access Methods
+
+- **Direct SQL queries:** Use DBeaver's SQL Editor for complex operations
+- **Render Admin Apps:** Deploy pgAdmin via Render Dashboard (paid option)
+- **Command line:** Connect using `psql` with external database URL
+
 ## Commands
 
 - No specific build commands required (static frontend)
