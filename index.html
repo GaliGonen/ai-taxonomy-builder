@@ -39,22 +39,7 @@
             color: white;
         }
 
-        .theme-toggle {
-            margin-top: 10px;
-            display: inline-block;
-            background: rgba(255,255,255,0.15);
-            color: #ffffff;
-            border: 1px solid rgba(255,255,255,0.3);
-            padding: 6px 12px;
-            border-radius: 999px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background 0.2s ease, transform 0.1s ease;
-        }
-
-        .theme-toggle:hover { background: rgba(255,255,255,0.22); }
-        .theme-toggle:active { transform: translateY(1px); }
+        
         
         .header h1 {
             font-size: 2.5rem;
@@ -139,8 +124,8 @@
             margin-bottom: 8px;
             color: #374151;
             font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
+            text-transform: none;
+            letter-spacing: 0.2px;
         }
         
         input, select {
@@ -236,6 +221,7 @@
 
         .use-case-main {
             flex: 1;
+            max-width: 70ch;
         }
 
         .use-case-sidebar {
@@ -308,10 +294,10 @@
         }
         
         .use-case-description {
-            color: #4b5563;
-            line-height: 1.6;
+            color: #374151;
+            line-height: 1.65;
             margin-bottom: 24px;
-            font-size: 1rem;
+            font-size: 1.05rem;
         }
         
         .success-metrics {
@@ -524,7 +510,6 @@
     <div class="container">
         <header class="header">
             <h1>AI Use Cases Taxonomy</h1>
-            <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle theme"></button>
         </header>
 
         <div id="apiStatus" class="api-status checking" style="display: none;">
@@ -584,7 +569,7 @@
         const apiStatus = document.getElementById('apiStatus');
         const searchBtn = document.getElementById('searchBtn');
         const wakeUpBtn = document.getElementById('wakeUpBtn');
-        const themeToggle = document.getElementById('themeToggle');
+        
         
         let isApiActive = false;
 
@@ -842,11 +827,7 @@
         window.addEventListener('load', async () => {
             console.log('AI Use Cases Search Interface loaded');
             // apply saved theme
-            const savedTheme = localStorage.getItem('theme');
-            if (savedTheme === 'calm') {
-                document.body.classList.add('theme-calm');
-                // Button is icon-only; no text toggle needed
-            }
+            // theme toggle removed
             await checkApiStatus();
             
             if (isApiActive) {
@@ -860,12 +841,7 @@
             }
         }, 120000);
 
-        if (themeToggle) {
-            themeToggle.addEventListener('click', () => {
-                const isCalm = document.body.classList.toggle('theme-calm');
-                localStorage.setItem('theme', isCalm ? 'calm' : 'vibrant');
-            });
-        }
+        
     </script>
 </body>
 </html>
