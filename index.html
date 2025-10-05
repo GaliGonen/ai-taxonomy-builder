@@ -88,11 +88,14 @@
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 20px;
+            justify-items: start;
         }
         
         .form-group {
             display: flex;
             flex-direction: column;
+            width: 100%;
+            max-width: 360px;
         }
         
         .form-group label {
@@ -469,7 +472,7 @@
             <p>Discover AI implementations across tech company roles and departments</p>
         </header>
 
-        <div id="apiStatus" class="api-status checking">
+        <div id="apiStatus" class="api-status checking" style="display: none;">
             Checking API status...
             <button id="wakeUpBtn" class="wake-up-btn" onclick="wakeUpApiFromStatus()" style="display: none;">
                 Wake Up API
@@ -533,6 +536,8 @@
                 apiStatus.innerHTML = 'Checking API status...';
                 apiStatus.className = 'api-status checking';
                 wakeUpBtn.style.display = 'none';
+                // keep hidden while checking
+                apiStatus.style.display = 'none';
                 
                 const response = await fetch(SEARCH_API_URL, {
                     method: 'GET',
@@ -540,7 +545,8 @@
                 });
                 
                 if (response.ok) {
-                    apiStatus.innerHTML = 'API is active and ready';
+                    // hide banner on success (no "active and ready" indication)
+                    apiStatus.style.display = 'none';
                     apiStatus.className = 'api-status active';
                     wakeUpBtn.style.display = 'none';
                     isApiActive = true;
@@ -552,6 +558,7 @@
             } catch (error) {
                 apiStatus.innerHTML = `API is sleeping - <a href="https://n8n-render-rwyu.onrender.com" target="_blank" style="color: #dc2626; text-decoration: underline; font-weight: bold;">Activate n8n workflow manually</a> then <button class="wake-up-btn" onclick="wakeUpApiFromStatus()">Try Again</button>`;
                 apiStatus.className = 'api-status inactive';
+                apiStatus.style.display = 'block';
                 isApiActive = false;
                 searchBtn.disabled = true;
                 return false;
@@ -561,6 +568,7 @@
         async function wakeUpApi() {
             apiStatus.innerHTML = 'Waking up API... (this may take 30-60 seconds)';
             apiStatus.className = 'api-status checking';
+            apiStatus.style.display = 'block';
             searchBtn.disabled = true;
             
             for (let attempt = 1; attempt <= 5; attempt++) {
@@ -573,7 +581,8 @@
                     });
                     
                     if (response.ok) {
-                        apiStatus.innerHTML = 'API is now active and ready!';
+                        // hide banner on success
+                        apiStatus.style.display = 'none';
                         apiStatus.className = 'api-status active';
                         isApiActive = true;
                         searchBtn.disabled = false;
@@ -590,6 +599,7 @@
             
             apiStatus.innerHTML = `Manual activation required - <a href="https://n8n-render-rwyu.onrender.com" target="_blank" style="color: #dc2626; text-decoration: underline; font-weight: bold;">Open n8n dashboard</a> → activate workflow → <button class="wake-up-btn" onclick="checkApiStatus()">Check Again</button>`;
             apiStatus.className = 'api-status inactive';
+            apiStatus.style.display = 'block';
             return false;
         }
 
