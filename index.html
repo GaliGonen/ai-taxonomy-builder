@@ -16,6 +16,7 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
+            font-size: 16px;
         }
 
         /* Calm theme variant */
@@ -130,12 +131,12 @@
         }
         
         .form-group label {
-            font-weight: 600;
+            font-weight: 500;
             margin-bottom: 8px;
             color: #374151;
             font-size: 0.9rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.6px;
         }
         
         input, select {
@@ -275,7 +276,7 @@
             font-size: 1.4rem;
             font-weight: 800;
             color: #111827;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
             line-height: 1.35;
         }
         
@@ -390,6 +391,11 @@
             font-weight: 600;
             white-space: nowrap;
             border: 1px solid transparent;
+            line-height: 1.25;
+        }
+
+        @media (min-width: 1024px) {
+            body { font-size: 17px; }
         }
 
         /* Neutral base for most badges */
@@ -486,7 +492,6 @@
     <div class="container">
         <header class="header">
             <h1>AI Use Cases Taxonomy</h1>
-            <p>Discover AI implementations across tech company roles and departments</p>
             <button id="themeToggle" class="theme-toggle" type="button">Calm theme</button>
         </header>
 
