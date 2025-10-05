@@ -432,11 +432,37 @@
         }
 
         /* Subtle, purposeful color accents per label type */
-        .badge-role { border-left: 4px solid #2563eb; }     /* blue-600 */
-        .badge-dept { border-left: 4px solid #d97706; }     /* amber-600 */
-        .badge-seniority { border-left: 4px solid #7c3aed; } /* violet-600 */
-        .badge-category { border-left: 4px solid #06b6d4; }  /* cyan-500/600 */
-        .badge-roi { border-left: 4px solid #10b981; }       /* emerald-500 */
+        /* Full-color badges with accessible text */
+        .badge-role {
+            background: #dbeafe; /* blue-100 */
+            color: #1e3a8a;      /* blue-800 */
+            border-color: #93c5fd; /* blue-300 */
+            border-left: 4px solid #1d4ed8; /* blue-700 */
+        }
+        .badge-dept {
+            background: #fef3c7; /* amber-100 */
+            color: #7c2d12;      /* orange-900 */
+            border-color: #fcd34d; /* amber-300 */
+            border-left: 4px solid #b45309; /* amber-700 */
+        }
+        .badge-seniority {
+            background: #ede9fe; /* violet-100 */
+            color: #4c1d95;      /* violet-900 */
+            border-color: #c4b5fd; /* violet-300 */
+            border-left: 4px solid #6d28d9; /* violet-700 */
+        }
+        .badge-category {
+            background: #cffafe; /* cyan-100 */
+            color: #155e75;      /* cyan/teal-800 */
+            border-color: #67e8f9; /* cyan-300 */
+            border-left: 4px solid #0e7490; /* cyan-700 */
+        }
+        .badge-roi {
+            background: #d1fae5; /* emerald-100 */
+            color: #064e3b;      /* emerald-900 */
+            border-color: #6ee7b7; /* emerald-300 */
+            border-left: 4px solid #047857; /* emerald-700 */
+        }
         
         .loading {
             text-align: center;
