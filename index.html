@@ -17,6 +17,11 @@
             min-height: 100vh;
             padding: 20px;
         }
+
+        /* Calm theme variant */
+        body.theme-calm {
+            background: linear-gradient(160deg, #eef2ff 0%, #f5f3ff 100%);
+        }
         
         .container {
             max-width: 1200px;
@@ -28,6 +33,23 @@
             margin-bottom: 48px;
             color: white;
         }
+
+        .theme-toggle {
+            margin-top: 10px;
+            display: inline-block;
+            background: rgba(255,255,255,0.15);
+            color: #ffffff;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s ease;
+        }
+
+        .theme-toggle:hover { background: rgba(255,255,255,0.22); }
+        .theme-toggle:active { transform: translateY(1px); }
         
         .header h1 {
             font-size: 2.5rem;
@@ -465,6 +487,7 @@
         <header class="header">
             <h1>AI Use Cases Taxonomy</h1>
             <p>Discover AI implementations across tech company roles and departments</p>
+            <button id="themeToggle" class="theme-toggle" type="button">Calm theme</button>
         </header>
 
         <div id="apiStatus" class="api-status checking" style="display: none;">
@@ -524,6 +547,7 @@
         const apiStatus = document.getElementById('apiStatus');
         const searchBtn = document.getElementById('searchBtn');
         const wakeUpBtn = document.getElementById('wakeUpBtn');
+        const themeToggle = document.getElementById('themeToggle');
         
         let isApiActive = false;
 
@@ -780,6 +804,12 @@
 
         window.addEventListener('load', async () => {
             console.log('AI Use Cases Search Interface loaded');
+            // apply saved theme
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'calm') {
+                document.body.classList.add('theme-calm');
+                if (themeToggle) themeToggle.textContent = 'Vibrant theme';
+            }
             await checkApiStatus();
             
             if (isApiActive) {
@@ -792,6 +822,14 @@
                 await checkApiStatus();
             }
         }, 120000);
+
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const isCalm = document.body.classList.toggle('theme-calm');
+                themeToggle.textContent = isCalm ? 'Vibrant theme' : 'Calm theme';
+                localStorage.setItem('theme', isCalm ? 'calm' : 'vibrant');
+            });
+        }
     </script>
 </body>
 </html>
