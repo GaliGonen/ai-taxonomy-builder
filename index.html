@@ -530,7 +530,7 @@
     <div class="container">
         <header class="header">
             <h1>AI Use Cases Taxonomy</h1>
-            <button id="themeToggle" class="theme-toggle" type="button">Calm theme</button>
+            <button id="themeToggle" class="theme-toggle" type="button" aria-label="Toggle theme"></button>
         </header>
 
         <div id="apiStatus" class="api-status checking" style="display: none;">
@@ -851,7 +851,7 @@
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme === 'calm') {
                 document.body.classList.add('theme-calm');
-                if (themeToggle) themeToggle.textContent = 'Vibrant theme';
+                // Button is icon-only; no text toggle needed
             }
             await checkApiStatus();
             
@@ -869,7 +869,6 @@
         if (themeToggle) {
             themeToggle.addEventListener('click', () => {
                 const isCalm = document.body.classList.toggle('theme-calm');
-                themeToggle.textContent = isCalm ? 'Vibrant theme' : 'Calm theme';
                 localStorage.setItem('theme', isCalm ? 'calm' : 'vibrant');
             });
         }
