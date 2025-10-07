@@ -698,7 +698,19 @@
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
-                const responseData = await response.json();
+                const raw = await response.text();
+                let responseData = {};
+                if (raw && raw.trim().length > 0) {
+                    try {
+                        responseData = JSON.parse(raw);
+                    } catch (e) {
+                        console.warn('Non-JSON response, treating as empty results');
+                        responseData = { success: true, data: [] };
+                    }
+                } else {
+                    // Empty body → treat as no results
+                    responseData = { success: true, data: [] };
+                }
                 console.log('API Response:', responseData);
                 
                 if (responseData.success && responseData.data && Array.isArray(responseData.data)) {
