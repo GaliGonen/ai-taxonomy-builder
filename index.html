@@ -748,7 +748,13 @@
             resultsCount.textContent = `${results.length} result${results.length !== 1 ? 's' : ''} found`;
             
             if (results.length === 0) {
-                resultsList.innerHTML = '<div class="loading">No use cases found matching your criteria. Try different search terms or clear some filters.</div>';
+                const kwInput = document.getElementById('keywords');
+                const kw = kwInput ? (kwInput.value || '').trim() : '';
+                if (kw) {
+                    resultsList.innerHTML = `<div class="loading">No use case found for "${escapeHtml(kw)}". Try different keywords.</div>`;
+                } else {
+                    resultsList.innerHTML = '<div class="loading">No use cases found matching your criteria. Try different search terms or clear some filters.</div>';
+                }
                 return;
             }
             
